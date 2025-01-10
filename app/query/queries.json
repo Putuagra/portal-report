@@ -1,0 +1,62 @@
+{
+    "BNI Direct": {
+        "size": null,
+        "track_total_hits": true,
+        "_source": [
+            "@timestamp",
+            "TRX_DATE",
+            "avg",
+            "max",
+            "total",
+            "total_credit_eq_amt",
+            "total_debit_eq_amt",
+            "total_trx_amt"
+        ],
+        "query": {
+            "bool": {
+                "must": [],
+                "filter": [
+                    {
+                        "range": {
+                            "@timestamp": {
+                                "gte": null,
+                                "lt": null
+                            }
+                        }
+                    },
+                    {"term": {"report-type": "tps"}}
+                ]
+            }
+        },
+        "sort": [{"@timestamp": "asc"}]
+    },
+    "Maverick": {
+        "size": null,
+        "track_total_hits": true,
+        "_source": [
+            "@timestamp",
+            "TRX_DATE",
+            "avg",
+            "max",
+            "total",
+            "percentile_95",
+            "type"
+        ],
+        "query": {
+            "bool": {
+                "must": [],
+                "filter": [
+                    {
+                        "range": {
+                            "@timestamp": {
+                                "gte": null,
+                                "lt": null
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "sort": [{"@timestamp": "asc"}]
+    }
+}

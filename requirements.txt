@@ -1,0 +1,9 @@
+# List your required libraries here 
+python-pptx
+streamlit
+pandas
+elasticsearch
+PyYAML
+fpdf
+dataframe_image
+matplotlib
