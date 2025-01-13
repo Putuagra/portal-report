@@ -4,6 +4,7 @@ import json
 
 
 # Function to load YAML config
+# Change with your path and name file .yaml
 def load_config_elk():
     with open("app/connection_config.yaml", "r") as file:
         elk_config = yaml.safe_load(file)
