@@ -1,0 +1,5 @@
+elkhub:
+  url: "https://user:password@url_elk:port/"
+  index-source:
+    index1: "namaindex*"
+    index2: "namaindex2*"
