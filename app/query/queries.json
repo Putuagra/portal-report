@@ -1,62 +1,100 @@
 {
-    "BNI Direct": {
-        "size": null,
-        "track_total_hits": true,
-        "_source": [
-            "@timestamp",
-            "TRX_DATE",
-            "avg",
-            "max",
-            "total",
-            "total_credit_eq_amt",
-            "total_debit_eq_amt",
-            "total_trx_amt"
-        ],
-        "query": {
-            "bool": {
-                "must": [],
-                "filter": [
-                    {
-                        "range": {
-                            "@timestamp": {
-                                "gte": null,
-                                "lt": null
-                            }
-                        }
-                    },
-                    {"term": {"report-type": "tps"}}
-                ]
+  "BNI Direct": {
+    "size": null,
+    "track_total_hits": true,
+    "_source": [
+      "@timestamp",
+      "TRX_DATE",
+      "avg",
+      "max",
+      "total",
+      "total_debit_eq_amt"
+    ],
+    "query": {
+      "bool": {
+        "must": [],
+        "filter": [
+          {
+            "range": {
+              "@timestamp": {
+                "gte": null,
+                "lt": null
+              }
             }
-        },
-        "sort": [{"@timestamp": "asc"}]
+          },
+          { "term": { "report-type": "tps" } }
+        ]
+      }
     },
-    "Maverick": {
-        "size": null,
-        "track_total_hits": true,
-        "_source": [
-            "@timestamp",
-            "TRX_DATE",
-            "avg",
-            "max",
-            "total",
-            "percentile_95",
-            "type"
-        ],
-        "query": {
-            "bool": {
-                "must": [],
-                "filter": [
-                    {
-                        "range": {
-                            "@timestamp": {
-                                "gte": null,
-                                "lt": null
-                            }
-                        }
-                    }
-                ]
+    "sort": [{ "@timestamp": "asc" }]
+  },
+  "Maverick": {
+    "size": null,
+    "track_total_hits": true,
+    "_source": [
+      "@timestamp",
+      "avg_rps",
+      "max_rps",
+      "total_request",
+      "type"
+    ],
+    "query": {
+      "bool": {
+        "must": [],
+        "filter": [
+          {
+            "range": {
+              "@timestamp": {
+                "gte": null,
+                "lt": null
+              }
             }
-        },
-        "sort": [{"@timestamp": "asc"}]
-    }
+          }
+        ]
+      }
+    },
+    "sort": [{ "@timestamp": "asc" }]
+  },
+  "BIFAST": {
+    "size": null,
+    "track_total_hits": true,
+    "_source": ["@timestamp", "TPS_ALL"],
+    "query": {
+      "bool": {
+        "must": [],
+        "filter": [
+          {
+            "range": {
+              "@timestamp": {
+                "gte": null,
+                "lt": null
+              }
+            }
+          }
+        ]
+      }
+    },
+    "sort": [{ "@timestamp": "asc" }]
+  },
+  "QRIS": {
+    "size": null,
+    "track_total_hits": true,
+    "_source": ["@timestamp", "TRX_DATE", "avg", "max", "total"],
+    "query": {
+      "bool": {
+        "must": [],
+        "filter": [
+          {
+            "range": {
+              "@timestamp": {
+                "gte": null,
+                "lt": null
+              }
+            }
+          }
+        ]
+      }
+    },
+    "sort": [{ "@timestamp": "asc" }]
+  }
 }

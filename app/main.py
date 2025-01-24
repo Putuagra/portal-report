@@ -34,7 +34,7 @@ months = [
     "December",
 ]
 
-types = ["BNI Direct", "Maverick"]
+types = ["BNI Direct", "Maverick", "BIFAST", "QRIS"]
 
 current_year = datetime.now().year
 years = list(range(2024, current_year + 1))
@@ -108,7 +108,6 @@ if st.button("Generate PDF"):
                 buffer = dataframe_to_pdf(
                     data_df["data_pdf_day"],
                     data_df["data_pdf_month"],
-                    data_df["summary"],
                     selected_types,
                 )
                 loading_animation(placeholder, 90)

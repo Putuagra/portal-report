@@ -36,6 +36,10 @@ def load_queries(file_path="app/query/queries.json"):
     with open(file_path, "r") as file:
         return json.load(file)
     
+def load_fields(file_path="app/query/fields.json"):
+    with open(file_path, "r") as file:
+        return json.load(file)
+    
 def modify_query(query, query_size, start_timestamp, end_time, gt_type="gte"):
     query["size"] = query_size
     range_filter = query["query"]["bool"]["filter"][0]["range"]["@timestamp"]

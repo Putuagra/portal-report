@@ -2,41 +2,69 @@ import pandas as pd
 import glob
 import sys
 import os
-from core.config import elasticsearch_client, index_source, load_queries, modify_query
+from datetime import timedelta, timezone
+from core.config import (
+    elasticsearch_client,
+    index_source,
+    load_queries,
+    modify_query,
+    load_fields,
+)
+
+
+# def check_type(type):
+#     if type in ["QRIS"]:
+#         return ("RPS", "request", "Request")
+#     else:
+#         return ("TPS", "transaction", "Transaction")
+
+def check_type(type):
+    if type in ["QRIS"]:
+        # return ("RPS", "request", "Request")
+        return {"TPS_RPS": "RPS", "req_trx": "request", "REQ_TRX": "Request"}
+    else:
+        # return ("TPS", "transaction", "Transaction")
+        return {"TPS_RPS": "TPS", "req_trx": "transaction", "REQ_TRX": "Transaction"}
 
 
 def calculate_tps(df_clear, selected_types):
-    day_group = ["TRX_DATE"] if selected_types == "BNI Direct" else ["TRX_DATE", "type"]
-    month_group = (
-        ["per_month"] if selected_types == "BNI Direct" else ["per_month", "type"]
+    day_group = (
+        ["TRX_DATE"]
+        if selected_types in ["BNI Direct", "BIFAST", "QRIS"]
+        else ["TRX_DATE", "type"]
     )
+    month_group = (
+        ["per_month"]
+        if selected_types in ["BNI Direct", "BIFAST", "QRIS"]
+        else ["per_month", "type"]
+    )
+
+    fields = load_fields()
+    base_fields = fields.get(selected_types)
 
     # Define aggregation logic for per-day calculations
     day_aggregations = {
-        "max_tps": ("max", "max"),
-        "avg_tps": ("avg", "mean"),
-        "total_transaction_per_day": ("total", "sum"),
+        "max_tps": (base_fields["max"], "max"),
+        "avg_tps": (base_fields["avg"], "mean"),
+        "total_transaction_per_day": (base_fields["total"], "sum"),
+        "max_percentile_95": (base_fields["max"], lambda x: x.quantile(0.95)),
     }
 
     if selected_types == "BNI Direct":
-        day_aggregations["max_percentile_95"] = ("max", lambda x: x.quantile(0.95))
         day_aggregations["nominal_transaction_per_day"] = (
-            "total_debit_eq_amt",
+            base_fields["total_debit"],
             "sum",
         )
-
-    if selected_types == "Maverick":
-        day_aggregations["max_percentile_95"] = ("percentile_95", "max")
 
     day_aggregations = dict(sorted(day_aggregations.items()))
     tps_per_day = df_clear.groupby(day_group).agg(**day_aggregations).reset_index()
 
     month_aggregations = {
-        "total_transaction_per_month": ("total", "sum"),
+        "total_transaction_per_month": (base_fields["total"], "sum"),
     }
     if selected_types == "BNI Direct":
         month_aggregations["nominal_transaction_per_month"] = (
-            "total_debit_eq_amt",
+            base_fields["total_debit"],
             "sum",
         )
 
@@ -46,7 +74,7 @@ def calculate_tps(df_clear, selected_types):
     )
 
     # Calculate transaction percent change
-    if selected_types == "BNI Direct":
+    if selected_types in ["BNI Direct", "BIFAST", "QRIS"]:
         tps_per_day["transaction_percent_change"] = (
             tps_per_day["total_transaction_per_day"].pct_change() * 100
         ).fillna(0)
@@ -61,6 +89,8 @@ def calculate_tps(df_clear, selected_types):
 def summary_tps(df_clear, selected_types):
     if df_clear is not None and not df_clear.empty:
         tps_per_day, tps_per_month = calculate_tps(df_clear, selected_types)
+        # TPS_or_RPS, req_or_trx, REQ_or_TRX = check_type(selected_types)
+        variable = check_type(selected_types)
 
         # tps_per_day["doc_id"] = tps_per_day["TRX_DATE"] + "_" + selected_types
         tps_per_day.rename(columns={"TRX_DATE": "@timestamp"}, inplace=True)
@@ -72,16 +102,16 @@ def summary_tps(df_clear, selected_types):
         tps_per_day["@timestamp"] = tps_per_day["@timestamp"].dt.strftime("%Y-%m-%d")
 
         rename_tps_per_day = {
-            "@timestamp": "Transaction Date",
-            "max_tps": "Max TPS",
-            "avg_tps": "Avg TPS",
-            "max_percentile_95": "Max TPS (95th Percentile)",
-            "total_transaction_per_day": "Total Transaction Per Day",
+            "@timestamp": f"{variable["REQ_TRX"]} Date",
+            "max_tps": f"Max {variable["TPS_RPS"]}",
+            "avg_tps": f"Avg {variable["TPS_RPS"]}",
+            "max_percentile_95": f"Max {variable["TPS_RPS"]} (95th Percentile)",
+            "total_transaction_per_day": f"Total {variable["REQ_TRX"]} Per Day",
             "transaction_percent_change": "Trx Pct Change",
         }
 
         rename_tps_per_month = {
-            "total_transaction_per_month": "Total Transaction Per Month",
+            "total_transaction_per_month": f"Total {variable["REQ_TRX"]} Per Month",
             "per_month": "Month",
         }
 
@@ -93,7 +123,9 @@ def summary_tps(df_clear, selected_types):
                 "nominal_transaction_per_day"
             ].apply(lambda x: int(x))
             tps_per_day = tps_per_day.rename(
-                columns={"nominal_transaction_per_day": "Nominal Transaction Per Day"}
+                columns={
+                    "nominal_transaction_per_day": f"Nominal {variable["REQ_TRX"]} Per Day"
+                }
             )
 
             tps_per_month["nominal_transaction_per_month"] = tps_per_month[
@@ -101,22 +133,12 @@ def summary_tps(df_clear, selected_types):
             ].apply(lambda x: int(x))
             tps_per_month = tps_per_month.rename(
                 columns={
-                    "nominal_transaction_per_month": "Nominal Transaction Per Month"
+                    "nominal_transaction_per_month": f"Nominal {variable["REQ_TRX"]} Per Month"
                 }
             )
         elif selected_types == "Maverick":
             tps_per_day = tps_per_day.rename(columns={"type": "Type"})
             tps_per_month = tps_per_month.rename(columns={"type": "Type"})
-        # Count for summary
-        max_row_trx = tps_per_day.loc[tps_per_day["Total Transaction Per Day"].idxmax()]
-        summary = {
-            "Minimum": tps_per_day["Trx Pct Change"].min(),
-            "Maximum": tps_per_day["Trx Pct Change"].max(),
-            "Negative Values Count": (tps_per_day["Trx Pct Change"] < 0).sum(),
-            "Positive Values Count": (tps_per_day["Trx Pct Change"] > 0).sum(),
-            "Max Total Trx": max_row_trx["Total Transaction Per Day"],
-            "Trx Date": max_row_trx["Transaction Date"],
-        }
 
         tps_per_day.index = tps_per_day.index + 1
         tps_per_month.index = tps_per_month.index + 1
@@ -124,7 +146,6 @@ def summary_tps(df_clear, selected_types):
         return {
             "data_pdf_day": tps_per_day,
             "data_pdf_month": tps_per_month,
-            "summary": summary,
         }
     else:
         return None
@@ -137,7 +158,11 @@ def process_and_save_dataframe(all_results, selected_types):
 
             df = pd.DataFrame(all_results)
 
-            df["@timestamp"] = pd.to_datetime(df["@timestamp"])
+            df["@timestamp"] = pd.to_datetime(df["@timestamp"]).dt.tz_convert("UTC")
+            wib_zone = timezone(timedelta(hours=7))
+            df["TRX_DATE"] = (
+                df["@timestamp"].dt.tz_convert(wib_zone).dt.strftime("%Y%m%d")
+            )
             df["per_month"] = df["TRX_DATE"].str[:6].apply(lambda x: f"{x[:4]}-{x[4:]}")
 
             # df.to_csv("dataframe.csv")
