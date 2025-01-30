@@ -12,31 +12,17 @@ from core.config import (
 )
 
 
-# def check_type(type):
-#     if type in ["QRIS"]:
-#         return ("RPS", "request", "Request")
-#     else:
-#         return ("TPS", "transaction", "Transaction")
-
 def check_type(type):
     if type in ["QRIS"]:
-        # return ("RPS", "request", "Request")
         return {"TPS_RPS": "RPS", "req_trx": "request", "REQ_TRX": "Request"}
     else:
-        # return ("TPS", "transaction", "Transaction")
         return {"TPS_RPS": "TPS", "req_trx": "transaction", "REQ_TRX": "Transaction"}
 
 
 def calculate_tps(df_clear, selected_types):
-    day_group = (
-        ["TRX_DATE"]
-        if selected_types in ["BNI Direct", "BIFAST", "QRIS"]
-        else ["TRX_DATE", "type"]
-    )
+    day_group = ["TRX_DATE", "type"] if selected_types in ["Maverick"] else ["TRX_DATE"]
     month_group = (
-        ["per_month"]
-        if selected_types in ["BNI Direct", "BIFAST", "QRIS"]
-        else ["per_month", "type"]
+        ["per_month", "type"] if selected_types in ["Maverick"] else ["per_month"]
     )
 
     fields = load_fields()
@@ -49,24 +35,23 @@ def calculate_tps(df_clear, selected_types):
         "total_transaction_per_day": (base_fields["total"], "sum"),
         "max_percentile_95": (base_fields["max"], lambda x: x.quantile(0.95)),
     }
+    
+    month_aggregations = {
+        "total_transaction_per_month": (base_fields["total"], "sum"),
+    }
 
     if selected_types == "BNI Direct":
         day_aggregations["nominal_transaction_per_day"] = (
             base_fields["total_debit"],
             "sum",
         )
-
-    day_aggregations = dict(sorted(day_aggregations.items()))
-    tps_per_day = df_clear.groupby(day_group).agg(**day_aggregations).reset_index()
-
-    month_aggregations = {
-        "total_transaction_per_month": (base_fields["total"], "sum"),
-    }
-    if selected_types == "BNI Direct":
         month_aggregations["nominal_transaction_per_month"] = (
             base_fields["total_debit"],
             "sum",
         )
+
+    day_aggregations = dict(sorted(day_aggregations.items()))
+    tps_per_day = df_clear.groupby(day_group).agg(**day_aggregations).reset_index() 
 
     # Calculate total and nominal transaction per month
     tps_per_month = (
@@ -74,32 +59,30 @@ def calculate_tps(df_clear, selected_types):
     )
 
     # Calculate transaction percent change
-    if selected_types in ["BNI Direct", "BIFAST", "QRIS"]:
-        tps_per_day["transaction_percent_change"] = (
-            tps_per_day["total_transaction_per_day"].pct_change() * 100
-        ).fillna(0)
-    else:
+    if selected_types in ["Maverick"]:
         tps_per_day["transaction_percent_change"] = (
             tps_per_day.groupby("type")["total_transaction_per_day"].pct_change() * 100
         ).fillna(0)
+    else:
+        tps_per_day["transaction_percent_change"] = (
+            tps_per_day["total_transaction_per_day"].pct_change() * 100
+        ).fillna(0)
 
-    return tps_per_day, tps_per_month
+    return {"day": tps_per_day, "month": tps_per_month}
 
 
-def summary_tps(df_clear, selected_types):
+def rename_variable_tps(df_clear, selected_types):
     if df_clear is not None and not df_clear.empty:
-        tps_per_day, tps_per_month = calculate_tps(df_clear, selected_types)
-        # TPS_or_RPS, req_or_trx, REQ_or_TRX = check_type(selected_types)
+        df = calculate_tps(df_clear, selected_types)
         variable = check_type(selected_types)
 
-        # tps_per_day["doc_id"] = tps_per_day["TRX_DATE"] + "_" + selected_types
-        tps_per_day.rename(columns={"TRX_DATE": "@timestamp"}, inplace=True)
-        tps_per_day["@timestamp"] = pd.to_datetime(
-            tps_per_day["@timestamp"], format="%Y%m%d"
+        df["day"].rename(columns={"TRX_DATE": "@timestamp"}, inplace=True)
+        df["day"]["@timestamp"] = pd.to_datetime(
+            df["day"]["@timestamp"], format="%Y%m%d"
         )
 
-        tps_per_day = tps_per_day.sort_values(by="@timestamp")
-        tps_per_day["@timestamp"] = tps_per_day["@timestamp"].dt.strftime("%Y-%m-%d")
+        df["day"] = df["day"].sort_values(by="@timestamp")
+        df["day"]["@timestamp"] = df["day"]["@timestamp"].dt.strftime("%Y-%m-%d")
 
         rename_tps_per_day = {
             "@timestamp": f"{variable["REQ_TRX"]} Date",
@@ -115,37 +98,34 @@ def summary_tps(df_clear, selected_types):
             "per_month": "Month",
         }
 
-        tps_per_day = tps_per_day.rename(columns=rename_tps_per_day)
-        tps_per_month = tps_per_month.rename(columns=rename_tps_per_month)
+        df["day"] = df["day"].rename(columns=rename_tps_per_day)
+        df["month"] = df["month"].rename(columns=rename_tps_per_month)
 
         if selected_types == "BNI Direct":
-            tps_per_day["nominal_transaction_per_day"] = tps_per_day[
+            df["day"]["nominal_transaction_per_day"] = df["day"][
                 "nominal_transaction_per_day"
             ].apply(lambda x: int(x))
-            tps_per_day = tps_per_day.rename(
+            df["day"] = df["day"].rename(
                 columns={
                     "nominal_transaction_per_day": f"Nominal {variable["REQ_TRX"]} Per Day"
                 }
             )
 
-            tps_per_month["nominal_transaction_per_month"] = tps_per_month[
+            df["month"]["nominal_transaction_per_month"] = df["month"][
                 "nominal_transaction_per_month"
             ].apply(lambda x: int(x))
-            tps_per_month = tps_per_month.rename(
+            df["month"] = df["month"].rename(
                 columns={
                     "nominal_transaction_per_month": f"Nominal {variable["REQ_TRX"]} Per Month"
                 }
             )
         elif selected_types == "Maverick":
-            tps_per_day = tps_per_day.rename(columns={"type": "Type"})
-            tps_per_month = tps_per_month.rename(columns={"type": "Type"})
-
-        tps_per_day.index = tps_per_day.index + 1
-        tps_per_month.index = tps_per_month.index + 1
+            df["day"] = df["day"].rename(columns={"type": "Type"})
+            df["month"] = df["month"].rename(columns={"type": "Type"})
 
         return {
-            "data_pdf_day": tps_per_day,
-            "data_pdf_month": tps_per_month,
+            "data_pdf_day": df["day"],
+            "data_pdf_month": df["month"],
         }
     else:
         return None
@@ -165,9 +145,7 @@ def process_and_save_dataframe(all_results, selected_types):
             )
             df["per_month"] = df["TRX_DATE"].str[:6].apply(lambda x: f"{x[:4]}-{x[4:]}")
 
-            # df.to_csv("dataframe.csv")
-
-            tps = summary_tps(df, selected_types)
+            tps = rename_variable_tps(df, selected_types)
             return tps
         else:
             return None
@@ -186,7 +164,7 @@ def create_lock_file(lock_file_path):
         sys.exit(1)
     else:
         with open(lock_file_path, "w") as lock_file:
-            lock_file.write(str(os.getpid()))  # Store the process ID in the lock file
+            lock_file.write(str(os.getpid()))
 
 
 def remove_lock_file(lock_file_path):
@@ -222,7 +200,6 @@ def main(start_time, end_time, selected_types):
         if len(rows_list) >= query_size:
 
             while hits:
-                # query = custom_query(rows_list[-1]["@timestamp"], gt_type="gt")
                 query = modify_query(
                     base_query,
                     query_size,

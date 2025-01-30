@@ -7,6 +7,7 @@ from core.data import main, create_lock_file, remove_lock_file
 from core.pdf import dataframe_to_pdf
 from core.loading import loading_animation
 from datetime import datetime, timedelta, timezone
+from util.enums import Months, Types
 
 
 # Configure the main page
@@ -19,30 +20,16 @@ st.set_page_config(
 # Set title
 st.title("Client Self-Service Portal")
 
-months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-]
-
-types = ["BNI Direct", "Maverick", "BIFAST", "QRIS"]
+month_options = [month.value for month in Months]
+type_options = [type.value for type in Types]
 
 current_year = datetime.now().year
 years = list(range(2024, current_year + 1))
 
-selected_month = st.selectbox("Select a month", months)
+selected_month = st.selectbox("Select a month", month_options)
 selected_years = st.selectbox("Select a year", years)
-selected_types = st.selectbox("Select a type", types)
-month_number = months.index(selected_month) + 1
+selected_types = st.selectbox("Select a type", type_options)
+month_number = month_options.index(selected_month) + 1
 days_in_month = calendar.monthrange(current_year, month_number)[1]
 
 subheader = st.subheader("Instructions:")
@@ -61,7 +48,6 @@ end_time = datetime(
 ).isoformat()
 
 placeholder = st.empty()
-
 
 
 if st.button("Generate Excel"):

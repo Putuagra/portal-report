@@ -34,17 +34,15 @@ def create_title(title, pdf):
     pdf.ln(10)
 
 
-def write_to_pdf(pdf, words):
+def write_to_pdf(pdf, text):
     pdf.set_text_color(r=0, g=0, b=0)
     pdf.set_font("Helvetica", "", 12)
-
-    pdf.write(5, words)
+    pdf.write(5, text)
     pdf.ln(10)
 
 
-def color_negative_red(val):
-    color = "red" if val < 0 else "green" if val > 0 else "black"
-    return f"color: {color}"
+def color_negative_red(value):
+    return f"color: {'red' if value < 0 else 'green' if value > 0 else 'black'}"
 
 
 def style_dataframe(df, format_rules):
@@ -59,17 +57,17 @@ def export_to_image(styled_df, file_path):
     dfi.export(styled_df, file_path, dpi=300, table_conversion="matplotlib")
 
 
-def generate_charts(df, max_path, total_path, TPS_or_RPS, REQ_or_TRX, type):
-    generate_vertical_bar(df, max_path, f"Max {TPS_or_RPS}", type)
-    generate_vertical_bar(df, total_path, f"Total {REQ_or_TRX} Per Day", type)
+def generate_charts(df, max_tps_path, total_path, label_tps_rps, label_req_trx, type):
+    generate_vertical_bar(df, max_tps_path, f"Max {label_tps_rps}", type)
+    generate_vertical_bar(df, total_path, f"Total {label_req_trx} Per Day", type)
 
 
-def handle_maverick(df_per_day, day_format_rules, TPS_or_RPS, REQ_or_TRX, type):
+def handle_maverick(df_per_day, day_format_rules, label_tps_rps, label_req_trx, type):
     df_type_ext = df_per_day[df_per_day["Type"] == "external"]
     df_type_in = df_per_day[df_per_day["Type"] == "internal"]
 
-    summary_ext = calculate_summary(df_type_ext, REQ_or_TRX)
-    summary_in = calculate_summary(df_type_in, REQ_or_TRX)
+    summary_ext = calculate_summary(df_type_ext, label_req_trx)
+    summary_in = calculate_summary(df_type_in, label_req_trx)
 
     styled_df_ext = style_dataframe(df_type_ext, day_format_rules)
     styled_df_in = style_dataframe(df_type_in, day_format_rules)
@@ -81,16 +79,16 @@ def handle_maverick(df_per_day, day_format_rules, TPS_or_RPS, REQ_or_TRX, type):
         df_type_ext,
         "resources/verticalBarMaxEx.png",
         "resources/verticalBarTotalEx.png",
-        TPS_or_RPS,
-        REQ_or_TRX,
+        label_tps_rps,
+        label_req_trx,
         type,
     )
     generate_charts(
         df_type_in,
         "resources/verticalBarMaxIn.png",
         "resources/verticalBarTotalIn.png",
-        TPS_or_RPS,
-        REQ_or_TRX,
+        label_tps_rps,
+        label_req_trx,
         type,
     )
     return {
@@ -99,59 +97,76 @@ def handle_maverick(df_per_day, day_format_rules, TPS_or_RPS, REQ_or_TRX, type):
     }
 
 
-def handle_non_maverick(df_per_day, day_format_rules, TPS_or_RPS, REQ_or_TRX, type):
+def handle_non_maverick(df_per_day, day_format_rules, label_tps_rps, label_req_trx, type):
     styled_df_day = style_dataframe(df_per_day, day_format_rules)
     export_to_image(styled_df_day, "resources/data.png")
     generate_charts(
         df_per_day,
         "resources/verticalBarMax.png",
         "resources/verticalBarTotal.png",
-        TPS_or_RPS,
-        REQ_or_TRX,
+        label_tps_rps,
+        label_req_trx,
         type,
     )
-    summary = calculate_summary(df_per_day, REQ_or_TRX)
-    return {"summary": summary }
+    summary = calculate_summary(df_per_day, label_req_trx)
+    return {"summary": summary}
 
 
 def write_pdf_content(pdf, type, req_or_trx, REQ_or_TRX, TPS_or_RPS, summary):
-    write_to_pdf(
-        pdf, f"1. The table below illustrates the monthly {REQ_or_TRX}s of {type}:"
-    )
     if type != "Maverick":
+        write_to_pdf(
+            pdf, f"1. The table below illustrates the monthly {REQ_or_TRX}s of {type}:"
+        )
         pdf.image("./resources/data.png", w=170)
     else:
+        write_to_pdf(
+            pdf,
+            f"1a. The table below illustrates the monthly {REQ_or_TRX}s of {type} external:",
+        )
         pdf.image("./resources/data_ex.png", w=170)
+        pdf.add_page()
+        write_to_pdf(
+            pdf,
+            f"1b. The table below illustrates the monthly {REQ_or_TRX}s of {type} internal:",
+        )
         pdf.image("./resources/data_in.png", w=170)
 
-    pdf.ln(10)
     pdf.add_page()
     write_to_pdf(
         pdf, f"2. The table below illustrates total amount monthly {REQ_or_TRX}s:"
     )
     pdf.image("./resources/data2.png", w=170)
     pdf.ln(10)
-    write_to_pdf(
-        pdf,
-        f"3. The visualisations below shows Max {TPS_or_RPS} and Total {REQ_or_TRX} per Day:",
-    )
+
     if type != "Maverick":
+        write_to_pdf(
+            pdf,
+            f"3. The visualisations below shows Max {TPS_or_RPS} and Total {REQ_or_TRX} per Day:",
+        )
         pdf.image("./resources/verticalBarMax.png", h=75, w=199)
         pdf.ln(10)
         pdf.image("./resources/verticalBarTotal.png", h=75, w=199)
         pdf.ln(10)
         write_to_pdf(
             pdf,
-            f"In conclusion, This month {req_or_trx}s show a total decrease in {req_or_trx}s by {summary['summary']['Negative Values Count']} and increase in {req_or_trx}s by {summary['summary']['Positive Values Count']}. The lowest decrease was {summary['summary']['Minimum']:.2f}%, while the highest increase reached {summary['summary']['Maximum']:.2f}%. The highest {req_or_trx} total occurred on {summary['summary']['Trx Date']}, with a value of {summary['summary']['Max Total Trx']}.",
+            f"In conclusion, This month {req_or_trx}s show a total decrease in {req_or_trx}s by {summary['summary']['Negative Values Count']} and increase in {req_or_trx}s by {summary['summary']['Positive Values Count']}. The lowest decrease was {summary['summary']['Minimum']:.2f}%, while the highest increase reached {summary['summary']['Maximum']:.2f}%. The highest {req_or_trx} total occurred on {summary['summary']['Trx Date']}, with a value of {summary['summary']['Max Total Trx']} .",
         )
     else:
+        write_to_pdf(
+            pdf,
+            f"3a. The visualisations below shows Max {TPS_or_RPS} and Total {REQ_or_TRX} external per Day:",
+        )
         pdf.image("./resources/verticalBarMaxEx.png", h=75, w=199)
         pdf.ln(10)
+        pdf.image("./resources/verticalBarTotalEx.png", h=75, w=199)
+        pdf.add_page()
+        write_to_pdf(
+            pdf,
+            f"3b. The visualisations below shows Max {TPS_or_RPS} and Total {REQ_or_TRX} internal per Day:",
+        )
         pdf.image("./resources/verticalBarMaxIn.png", h=75, w=199)
         pdf.ln(10)
-        pdf.image("./resources/verticalBarTotalEx.png", h=75, w=199)
-        pdf.ln(10)
-        pdf.image("./resources/verticalBarTotalIn.png", h=75, w=199)
+        pdf.image("./resources/verticalBarTotalIn.png", h=75, w=199)  
         pdf.ln(10)
         write_to_pdf(
             pdf,
@@ -162,15 +177,14 @@ def write_pdf_content(pdf, type, req_or_trx, REQ_or_TRX, TPS_or_RPS, summary):
 def calculate_summary(df, REQ_or_TRX):
     # Count for summary
     max_row_trx = df.loc[df[f"Total {REQ_or_TRX} Per Day"].idxmax()]
-    summary = {
+    return {
         "Minimum": df["Trx Pct Change"].min(),
         "Maximum": df["Trx Pct Change"].max(),
         "Negative Values Count": (df["Trx Pct Change"] < 0).sum(),
         "Positive Values Count": (df["Trx Pct Change"] > 0).sum(),
-        "Max Total Trx": int(max_row_trx[f"Total {REQ_or_TRX} Per Day"]),
+        "Max Total Trx": "{:,.0f}".format(max_row_trx[f"Total {REQ_or_TRX} Per Day"]).replace(",", "."),
         "Trx Date": max_row_trx[f"{REQ_or_TRX} Date"],
     }
-    return summary
 
 
 def dataframe_to_pdf(df_per_day, df_per_month, type):
@@ -200,9 +214,13 @@ def dataframe_to_pdf(df_per_day, df_per_month, type):
         month_format_rules[f"Nominal {variable["REQ_TRX"]} Per Month"] = "{:,.0f}"
 
     if type == "Maverick":
-        summary = handle_maverick(df_per_day, day_format_rules, variable["TPS_RPS"], variable["REQ_TRX"], type)
+        summary = handle_maverick(
+            df_per_day, day_format_rules, variable["TPS_RPS"], variable["REQ_TRX"], type
+        )
     else:
-        summary = handle_non_maverick(df_per_day, day_format_rules, variable["TPS_RPS"], variable["REQ_TRX"], type)
+        summary = handle_non_maverick(
+            df_per_day, day_format_rules, variable["TPS_RPS"], variable["REQ_TRX"], type
+        )
 
     styled_df_month = df_per_month.style.format(month_format_rules).hide(axis="index")
     dfi.export(
@@ -213,7 +231,14 @@ def dataframe_to_pdf(df_per_day, df_per_month, type):
     # First Page
     pdf.add_page()
     create_title(title, pdf)
-    write_pdf_content(pdf, type, variable["req_trx"], variable["REQ_TRX"], variable["TPS_RPS"], summary)
+    write_pdf_content(
+        pdf,
+        type,
+        variable["req_trx"],
+        variable["REQ_TRX"],
+        variable["TPS_RPS"],
+        summary,
+    )
 
     if os.path.exists("resources"):
         shutil.rmtree("resources")
