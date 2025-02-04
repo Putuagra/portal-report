@@ -6,26 +6,26 @@ from datetime import timedelta, timezone
 from core.config import (
     elasticsearch_client,
     index_source,
-    load_queries,
+    load_json,
     modify_query,
-    load_fields,
 )
 
 
-def check_type(type):
-    if type in ["QRIS"]:
+def check_type(type: str):
+    if type in ["QRIS", "Maverick"]:
         return {"TPS_RPS": "RPS", "req_trx": "request", "REQ_TRX": "Request"}
     else:
         return {"TPS_RPS": "TPS", "req_trx": "transaction", "REQ_TRX": "Transaction"}
 
 
-def calculate_tps(df_clear, selected_types):
+def calculate_tps(df_clear, selected_types: str):
     day_group = ["TRX_DATE", "type"] if selected_types in ["Maverick"] else ["TRX_DATE"]
     month_group = (
         ["per_month", "type"] if selected_types in ["Maverick"] else ["per_month"]
     )
 
-    fields = load_fields()
+    field_path = "app/query/fields.json"
+    fields = load_json(field_path)
     base_fields = fields.get(selected_types)
 
     # Define aggregation logic for per-day calculations
@@ -50,6 +50,7 @@ def calculate_tps(df_clear, selected_types):
             "sum",
         )
 
+    # Sort column name by aplhabet
     day_aggregations = dict(sorted(day_aggregations.items()))
     tps_per_day = df_clear.groupby(day_group).agg(**day_aggregations).reset_index() 
 
@@ -71,7 +72,7 @@ def calculate_tps(df_clear, selected_types):
     return {"day": tps_per_day, "month": tps_per_month}
 
 
-def rename_variable_tps(df_clear, selected_types):
+def rename_variable_tps(df_clear, selected_types: str):
     if df_clear is not None and not df_clear.empty:
         df = calculate_tps(df_clear, selected_types)
         variable = check_type(selected_types)
@@ -85,16 +86,16 @@ def rename_variable_tps(df_clear, selected_types):
         df["day"]["@timestamp"] = df["day"]["@timestamp"].dt.strftime("%Y-%m-%d")
 
         rename_tps_per_day = {
-            "@timestamp": f"{variable["REQ_TRX"]} Date",
-            "max_tps": f"Max {variable["TPS_RPS"]}",
-            "avg_tps": f"Avg {variable["TPS_RPS"]}",
-            "max_percentile_95": f"Max {variable["TPS_RPS"]} (95th Percentile)",
-            "total_transaction_per_day": f"Total {variable["REQ_TRX"]} Per Day",
+            "@timestamp": f"{variable['REQ_TRX']} Date",
+            "max_tps": f"Max {variable['TPS_RPS']}",
+            "avg_tps": f"Avg {variable['TPS_RPS']}",
+            "max_percentile_95": f"Max {variable['TPS_RPS']} (95th Percentile)",
+            "total_transaction_per_day": f"Total {variable['REQ_TRX']} Per Day",
             "transaction_percent_change": "Trx Pct Change",
         }
 
         rename_tps_per_month = {
-            "total_transaction_per_month": f"Total {variable["REQ_TRX"]} Per Month",
+            "total_transaction_per_month": f"Total {variable['REQ_TRX']} Per Month",
             "per_month": "Month",
         }
 
@@ -107,7 +108,7 @@ def rename_variable_tps(df_clear, selected_types):
             ].apply(lambda x: int(x))
             df["day"] = df["day"].rename(
                 columns={
-                    "nominal_transaction_per_day": f"Nominal {variable["REQ_TRX"]} Per Day"
+                    "nominal_transaction_per_day": f"Nominal {variable['REQ_TRX']} Per Day"
                 }
             )
 
@@ -116,7 +117,7 @@ def rename_variable_tps(df_clear, selected_types):
             ].apply(lambda x: int(x))
             df["month"] = df["month"].rename(
                 columns={
-                    "nominal_transaction_per_month": f"Nominal {variable["REQ_TRX"]} Per Month"
+                    "nominal_transaction_per_month": f"Nominal {variable['REQ_TRX']} Per Month"
                 }
             )
         elif selected_types == "Maverick":
@@ -131,7 +132,7 @@ def rename_variable_tps(df_clear, selected_types):
         return None
 
 
-def process_and_save_dataframe(all_results, selected_types):
+def process_and_save_dataframe(all_results, selected_types: str):
     try:
         create_lock_file("process_and_save_dataframe")
         if all_results:
@@ -158,7 +159,7 @@ def process_and_save_dataframe(all_results, selected_types):
         remove_lock_file("process_and_save_dataframe")
 
 
-def create_lock_file(lock_file_path):
+def create_lock_file(lock_file_path: str):
     """Create a lock file to prevent multiple instances."""
     if os.path.exists(lock_file_path):
         sys.exit(1)
@@ -167,16 +168,17 @@ def create_lock_file(lock_file_path):
             lock_file.write(str(os.getpid()))
 
 
-def remove_lock_file(lock_file_path):
+def remove_lock_file(lock_file_path: str):
     """Remove the lock file."""
     if os.path.exists(lock_file_path):
         os.remove(lock_file_path)
 
 
-def main(start_time, end_time, selected_types):
+def main(start_time: str, end_time: str, selected_types: str):
     query_size = 10000
     rows_list = []
-    queries = load_queries()
+    query_path = "app/query/queries.json"
+    queries = load_json(query_path)
     base_query = queries.get(selected_types)
 
     query = modify_query(base_query, query_size, start_time, end_time)

@@ -1,4 +1,4 @@
-def loading_animation(placeholder, progress):
+def loading_animation(placeholder, progress: int):
     
     placeholder.markdown(f"""
     <div id="overlay">
@@ -36,5 +36,8 @@ def loading_animation(placeholder, progress):
             0% {{ width: 0%; }}
             100% {{ width: 100%; }}
         }}
+        # div[data-testid="stStatusWidget"] div button {{
+        # display: none;
+        # }}
     </style>
     """, unsafe_allow_html=True)
