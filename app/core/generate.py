@@ -1,6 +1,8 @@
 import streamlit as st
 import os
 import glob
+from typing import Any
+from streamlit.delta_generator import DeltaGenerator
 from core.loading import loading_animation
 from core.excel import run_excel_test
 from core.data import main, create_lock_file, remove_lock_file
@@ -17,31 +19,28 @@ def clear_lock_files():
 
 
 def handle_excel_generate(
-    start_time: str,
-    end_time: str,
-    selected_type: str,
-    selected_month: str,
-    selected_year: int,
-    placeholder,
+    times: dict[str, str],
+    selected_detail: dict[str, Any],
+    placeholder: DeltaGenerator,
 ):
     try:
         create_lock_file(excel_file_lock)
         loading_animation(placeholder, 0)
 
-        data_df = main(start_time, end_time, selected_type)
+        data_df = main(times, selected_detail["type"])
         loading_animation(placeholder, 80)
 
-        if not data_df:
+        if not any(data_df.values()):
             st.warning("Data is empty")
             return
 
-        buffer = run_excel_test(data_df)
+        buffer = run_excel_test(data_df["this_month"])
         loading_animation(placeholder, 90)
 
         st.download_button(
             label="Download Excel",
             data=buffer,
-            file_name=f"Report-{selected_month}-{selected_year}-{selected_type}.xlsx",
+            file_name=f"Report-{selected_detail["month"]}-{selected_detail["year"]}-{selected_detail["type"]}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         loading_animation(placeholder, 100)
@@ -55,11 +54,8 @@ def handle_excel_generate(
 
 
 def generate_excel_file(
-    start_time: str,
-    end_time: str,
-    selected_type: str,
-    selected_month: str,
-    selected_year: int,
+    times: dict[str, str],
+    selected_detail: dict[str, Any],
 ):
     placeholder = st.empty()
 
@@ -68,45 +64,38 @@ def generate_excel_file(
             st.write("Excel generate is in progress. Please wait until it completes.")
         else:
             handle_excel_generate(
-                start_time,
-                end_time,
-                selected_type,
-                selected_month,
-                selected_year,
+                times,
+                selected_detail,
                 placeholder,
             )
 
 
 def handle_pdf_generate(
-    start_time: str,
-    end_time: str,
-    selected_type: str,
-    selected_month: str,
-    selected_year: int,
-    placeholder,
+    times: dict[str, str],
+    selected_detail: dict[str, Any],
+    placeholder: DeltaGenerator,
 ):
     try:
         create_lock_file(pdf_file_lock)
         loading_animation(placeholder, 0)
 
-        data_df = main(start_time, end_time, selected_type)
+        data_df = main(times, selected_detail["type"])
         loading_animation(placeholder, 80)
 
-        if not data_df:
+        if not any(data_df.values()):
             st.warning("Data is empty")
             return
 
         buffer = dataframe_to_pdf(
-            data_df["data_pdf_day"],
-            data_df["data_pdf_month"],
-            selected_type,
+            data_df,
+            selected_detail["type"],
         )
 
         loading_animation(placeholder, 100)
         st.download_button(
             label="Download PDF",
             data=buffer,
-            file_name=f"Report-{selected_month}-{selected_year}-{selected_type}.pdf",
+            file_name=f"Report-{selected_detail["month"]}-{selected_detail["year"]}-{selected_detail["type"]}.pdf",
             mime="application/pdf",
         )
     except Exception as e:
@@ -118,11 +107,8 @@ def handle_pdf_generate(
 
 
 def generate_pdf_file(
-    start_time: str,
-    end_time: str,
-    selected_type: str,
-    selected_month: str,
-    selected_year: int,
+    times: dict[str, str],
+    selected_detail: dict[str, Any],
 ):
     placeholder = st.empty()
 
@@ -131,10 +117,7 @@ def generate_pdf_file(
             st.write("PDF generate is in progress. Please wait until it completes.")
         else:
             handle_pdf_generate(
-                start_time,
-                end_time,
-                selected_type,
-                selected_month,
-                selected_year,
+                times,
+                selected_detail,
                 placeholder,
             )

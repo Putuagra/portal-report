@@ -1,6 +1,7 @@
 from elasticsearch import Elasticsearch
 import yaml
 import json
+from typing import Any
 
 
 # Function to load YAML config
@@ -16,7 +17,7 @@ def load_config_elk():
 elk_config = load_config_elk()
 
 
-def index_source(selected_index):
+def index_source(selected_index: str):
     index_source = elk_config["elkhub"]["index-source"]
     if selected_index not in index_source:
         raise ValueError(
@@ -49,9 +50,17 @@ def load_json(file_path="app/query/queries.json"):
         raise Exception(f"Failed to load JSON file: {e}")
 
 
-def modify_query(query, query_size, start_timestamp, end_time, gt_type="gte"):
+def modify_query(
+    query,
+    query_size,
+    start_timestamp: dict[Any, Any],
+    end_time: dict[str, str],
+    gt_type="gte",
+):
     query["size"] = query_size
     range_filter = query["query"]["bool"]["filter"][0]["range"]["@timestamp"]
+
+    range_filter.pop("gt", None)
 
     range_filter[gt_type] = start_timestamp
     range_filter["lt"] = end_time

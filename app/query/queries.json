@@ -4,7 +4,6 @@
     "track_total_hits": true,
     "_source": [
       "@timestamp",
-      "TRX_DATE",
       "avg",
       "max",
       "total",
@@ -28,7 +27,7 @@
     },
     "sort": [{ "@timestamp": "asc" }]
   },
-  "Maverick": {
+  "WONDR": {
     "size": null,
     "track_total_hits": true,
     "_source": [
@@ -58,7 +57,7 @@
   "BIFAST": {
     "size": null,
     "track_total_hits": true,
-    "_source": ["@timestamp", "TPS_ALL"],
+    "_source": ["@timestamp", "avg", "max", "total"],
     "query": {
       "bool": {
         "must": [],
@@ -79,7 +78,7 @@
   "QRIS": {
     "size": null,
     "track_total_hits": true,
-    "_source": ["@timestamp", "TRX_DATE", "avg", "max", "total"],
+    "_source": ["@timestamp", "avg", "max", "total"],
     "query": {
       "bool": {
         "must": [],

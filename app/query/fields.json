@@ -5,14 +5,19 @@
         "total": "total",
         "total_debit": "total_debit_eq_amt"
     },
-    "Maverick": {
+    "WONDR": {
         "max": "max_rps",
         "avg": "avg_rps",
         "total": "total_request"
     },
     "BIFAST": {
-        "max": "TPS_ALL",
-        "avg": "TPS_ALL",
-        "total": "TPS_ALL"
+        "max": "max",
+        "avg": "avg",
+        "total": "total"
+    },
+    "QRIS": {
+        "max": "max",
+        "avg": "avg",
+        "total": "total"
     }
 }

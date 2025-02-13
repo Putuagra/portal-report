@@ -17,6 +17,6 @@ class Months(Enum):
 
 class Types(Enum):
     BNIDIRECT = "BNI Direct"
-    MAVERICK = "Maverick"
+    WONDR = "WONDR"
     BIFAST = "BIFAST"
     QRIS = "QRIS"

@@ -3,6 +3,7 @@ import glob
 import sys
 import os
 from datetime import timedelta, timezone
+from typing import Any
 from core.config import (
     elasticsearch_client,
     index_source,
@@ -12,16 +13,16 @@ from core.config import (
 
 
 def check_type(type: str):
-    if type in ["QRIS", "Maverick"]:
+    if type in ["QRIS", "WONDR"]:
         return {"TPS_RPS": "RPS", "req_trx": "request", "REQ_TRX": "Request"}
     else:
         return {"TPS_RPS": "TPS", "req_trx": "transaction", "REQ_TRX": "Transaction"}
 
 
-def calculate_tps(df_clear, selected_types: str):
-    day_group = ["TRX_DATE", "type"] if selected_types in ["Maverick"] else ["TRX_DATE"]
+def calculate_tps(df_clear: pd.DataFrame, selected_types: str):
+    day_group = ["TRX_DATE", "type"] if selected_types in ["WONDR"] else ["TRX_DATE"]
     month_group = (
-        ["per_month", "type"] if selected_types in ["Maverick"] else ["per_month"]
+        ["per_month", "type"] if selected_types in ["WONDR"] else ["per_month"]
     )
 
     field_path = "app/query/fields.json"
@@ -35,7 +36,7 @@ def calculate_tps(df_clear, selected_types: str):
         "total_transaction_per_day": (base_fields["total"], "sum"),
         "max_percentile_95": (base_fields["max"], lambda x: x.quantile(0.95)),
     }
-    
+
     month_aggregations = {
         "total_transaction_per_month": (base_fields["total"], "sum"),
     }
@@ -52,7 +53,7 @@ def calculate_tps(df_clear, selected_types: str):
 
     # Sort column name by aplhabet
     day_aggregations = dict(sorted(day_aggregations.items()))
-    tps_per_day = df_clear.groupby(day_group).agg(**day_aggregations).reset_index() 
+    tps_per_day = df_clear.groupby(day_group).agg(**day_aggregations).reset_index()
 
     # Calculate total and nominal transaction per month
     tps_per_month = (
@@ -60,7 +61,7 @@ def calculate_tps(df_clear, selected_types: str):
     )
 
     # Calculate transaction percent change
-    if selected_types in ["Maverick"]:
+    if selected_types in ["WONDR"]:
         tps_per_day["transaction_percent_change"] = (
             tps_per_day.groupby("type")["total_transaction_per_day"].pct_change() * 100
         ).fillna(0)
@@ -72,8 +73,8 @@ def calculate_tps(df_clear, selected_types: str):
     return {"day": tps_per_day, "month": tps_per_month}
 
 
-def rename_variable_tps(df_clear, selected_types: str):
-    if df_clear is not None and not df_clear.empty:
+def rename_variable_tps(df_clear: pd.DataFrame, selected_types: str):
+    if df_clear is not df_clear.empty:
         df = calculate_tps(df_clear, selected_types)
         variable = check_type(selected_types)
 
@@ -120,7 +121,7 @@ def rename_variable_tps(df_clear, selected_types: str):
                     "nominal_transaction_per_month": f"Nominal {variable['REQ_TRX']} Per Month"
                 }
             )
-        elif selected_types == "Maverick":
+        elif selected_types == "WONDR":
             df["day"] = df["day"].rename(columns={"type": "Type"})
             df["month"] = df["month"].rename(columns={"type": "Type"})
 
@@ -129,10 +130,10 @@ def rename_variable_tps(df_clear, selected_types: str):
             "data_pdf_month": df["month"],
         }
     else:
-        return None
+        return {}
 
 
-def process_and_save_dataframe(all_results, selected_types: str):
+def process_and_save_dataframe(all_results: list[dict[Any, Any]], selected_types: str):
     try:
         create_lock_file("process_and_save_dataframe")
         if all_results:
@@ -149,7 +150,7 @@ def process_and_save_dataframe(all_results, selected_types: str):
             tps = rename_variable_tps(df, selected_types)
             return tps
         else:
-            return None
+            return {}
     except Exception as e:
         print(e)
         lock_files = glob.glob("*.lock")
@@ -174,21 +175,39 @@ def remove_lock_file(lock_file_path: str):
         os.remove(lock_file_path)
 
 
-def main(start_time: str, end_time: str, selected_types: str):
+def main(times: dict[str, str], selected_types: str):
     query_size = 10000
-    rows_list = []
     query_path = "app/query/queries.json"
     queries = load_json(query_path)
     base_query = queries.get(selected_types)
 
-    query = modify_query(base_query, query_size, start_time, end_time)
+    df_this_month = fetch_data(
+        base_query, query_size, times["start_time"], times["end_time"], selected_types
+    )
+    df_last_month = fetch_data(
+        base_query,
+        query_size,
+        times["last_month_start_time"],
+        times["last_month_end_time"],
+        selected_types,
+    )
 
+    return {"this_month": df_this_month, "last_month": df_last_month}
+
+
+def fetch_data(
+    base_query,
+    query_size,
+    start_time: dict[str, str],
+    end_time: dict[str, str],
+    selected_types: str,
+):
     try:
-        # Initial search request
+        rows_list = []
         client = elasticsearch_client()
         index_source_elastic = index_source(selected_types)
+        query = modify_query(base_query, query_size, start_time, end_time)
         page = client.search(index=index_source_elastic, body=query)
-
         hits = page["hits"]["hits"]
 
         rows_list = [
@@ -200,7 +219,9 @@ def main(start_time: str, end_time: str, selected_types: str):
         ]
 
         if len(rows_list) >= query_size:
-
+            if not rows_list:
+                print("No data found. Stopping pagination.")
+                return pd.DataFrame()
             while hits:
                 query = modify_query(
                     base_query,
@@ -233,4 +254,4 @@ def main(start_time: str, end_time: str, selected_types: str):
         dataframe = process_and_save_dataframe(rows_list, selected_types)
         return dataframe
     else:
-        return None
+        return {}

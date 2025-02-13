@@ -1,6 +1,10 @@
-def loading_animation(placeholder, progress: int):
-    
-    placeholder.markdown(f"""
+from streamlit.delta_generator import DeltaGenerator
+
+
+def loading_animation(placeholder: DeltaGenerator, progress: int):
+
+    placeholder.markdown(
+        f"""
     <div id="overlay">
         <div id="progress-container">
             <div id="progress-bar"></div>
@@ -40,4 +44,6 @@ def loading_animation(placeholder, progress: int):
         # display: none;
         # }}
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
