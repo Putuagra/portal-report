@@ -186,26 +186,26 @@ def write_pdf_content(pdf, type, variable, summary):
     if type != "WONDR":
         write_section(
             pdf,
-            f"1. The table below illustrates the monthly {variable["REQ_TRX"]}s of {type}:",
+            f"1. The table below illustrates the monthly {variable['REQ_TRX']}s of {type}:",
             f"./{RESOURCES_DIR}/data.png",
         )
     else:
         write_section(
             pdf,
-            f"1a. The table below illustrates the monthly {variable["REQ_TRX"]}s of {type} external:",
+            f"1a. The table below illustrates the monthly {variable['REQ_TRX']}s of {type} external:",
             f"./{RESOURCES_DIR}/data_ex.png",
         )
         pdf.add_page()
         write_section(
             pdf,
-            f"1b. The table below illustrates the monthly {variable["REQ_TRX"]}s of {type} internal:",
+            f"1b. The table below illustrates the monthly {variable['REQ_TRX']}s of {type} internal:",
             f"./{RESOURCES_DIR}/data_in.png",
         )
 
     pdf.add_page()
     write_section(
         pdf,
-        f"2. The table below illustrates total amount monthly {variable["REQ_TRX"]}s:",
+        f"2. The table below illustrates total amount monthly {variable['REQ_TRX']}s:",
         f"./{RESOURCES_DIR}/data_month.png",
     )
     pdf.ln(10)
@@ -213,7 +213,7 @@ def write_pdf_content(pdf, type, variable, summary):
     if type != "WONDR":
         write_section(
             pdf,
-            f"3. The visualisations below shows Max {variable["TPS_RPS"]} and Total {variable["REQ_TRX"]} per Day:",
+            f"3. The visualisations below shows Max {variable['TPS_RPS']} and Total {variable['REQ_TRX']} per Day:",
             f"./{RESOURCES_DIR}/data_verticalBarMax.png",
             75,
             199,
@@ -225,7 +225,7 @@ def write_pdf_content(pdf, type, variable, summary):
     else:
         write_section(
             pdf,
-            f"3a. The visualisations below shows Max {variable["TPS_RPS"]} and Total {variable["REQ_TRX"]} external per Day:",
+            f"3a. The visualisations below shows Max {variable['TPS_RPS']} and Total {variable['REQ_TRX']} external per Day:",
             f"./{RESOURCES_DIR}/data_ex_verticalBarMax.png",
             75,
             199,
@@ -235,7 +235,7 @@ def write_pdf_content(pdf, type, variable, summary):
         pdf.add_page()
         write_section(
             pdf,
-            f"3b. The visualisations below shows Max {variable["TPS_RPS"]} and Total {variable["REQ_TRX"]} internal per Day:",
+            f"3b. The visualisations below shows Max {variable['TPS_RPS']} and Total {variable['REQ_TRX']} internal per Day:",
             f"./{RESOURCES_DIR}/data_in_verticalBarMax.png",
             75,
             199,

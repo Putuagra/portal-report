@@ -40,7 +40,7 @@ def handle_excel_generate(
         st.download_button(
             label="Download Excel",
             data=buffer,
-            file_name=f"Report-{selected_detail["month"]}-{selected_detail["year"]}-{selected_detail["type"]}.xlsx",
+            file_name=f"Report-{selected_detail['month']}-{selected_detail['year']}-{selected_detail['type']}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         loading_animation(placeholder, 100)
@@ -95,7 +95,7 @@ def handle_pdf_generate(
         st.download_button(
             label="Download PDF",
             data=buffer,
-            file_name=f"Report-{selected_detail["month"]}-{selected_detail["year"]}-{selected_detail["type"]}.pdf",
+            file_name=f"Report-{selected_detail['month']}-{selected_detail['year']}-{selected_detail['type']}.pdf",
             mime="application/pdf",
         )
     except Exception as e:
