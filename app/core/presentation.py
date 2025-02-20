@@ -53,7 +53,7 @@ def line_chart(ax, axisx, df_obj, color: str, label: str):
     ax.plot(
         axisx,
         df_obj,
-        marker="o",
+        # marker="o",
         linestyle="-",
         color=color,
         label=label,
@@ -71,7 +71,7 @@ def add_annotation(ax, text, x, y, isBar=True):
         fontweight="bold",
         color="red" if isBar else "black",
     )  # -> create annotation for chart
-    # plt.scatter([x], [y], color="red", marker="*", s=100) # -> for star logo
+    plt.scatter([x], [y], color="navy", marker="*", s=100) # -> for star logo
 
 
 def generate_vertical_bar(

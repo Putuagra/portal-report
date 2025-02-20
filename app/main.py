@@ -25,7 +25,7 @@ def get_month_range(year, month):
 
 def get_time_range(selected_year: str, selected_month: str):
     month_number = list(Months).index(selected_month) + 1
-    last_year, last_month_number = (
+    last_month_year, last_month_number = (
         (selected_year - 1, 12)
         if month_number == 1
         else (selected_year, month_number - 1)
@@ -33,7 +33,7 @@ def get_time_range(selected_year: str, selected_month: str):
 
     start_time, end_time = get_month_range(selected_year, month_number)
     last_month_start_time, last_month_end_time = get_month_range(
-        last_year, last_month_number
+        last_month_year, last_month_number
     )
 
     return {
