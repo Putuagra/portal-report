@@ -162,7 +162,7 @@ def generate_vertical_bar(
             x_mapped,
             df_filter,
             "deepskyblue",
-            "Total Request Last Month",
+            "Max TPS Last Month" if label == f"Max {variable['TPS_RPS']}" else "Total Request Last Month",
         )
         add_annotation(
             ax,
